@@ -90,6 +90,15 @@ def get_current_user(
         )
     return user
 
+def get_admin_user(
+        current_user: User=Depends(get_current_user)
+):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Admin privilege require"
+        )
+
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User=Depends(get_current_user)):
     return current_user
@@ -124,9 +133,8 @@ def Update_current_user( user_update:UserUpdate, current_user: User=Depends(get_
     return current_user
 
 
-@router.put("/change-password", response_model = UserResponse)
+@router.put("/change-password")
 def update_password(password_update:PasswordChange,
-                    token:str = Depends(oauth2_scheme),
                     current_user: User = Depends(get_current_user),
                     db: Session = Depends(get_db)):
     
@@ -146,9 +154,13 @@ def update_password(password_update:PasswordChange,
 
     return {"message":"Password saved successfully"}
 
-@router.get("/users")
-def get_admin_user(token:str = Depends(oauth2_scheme), 
-                   current_user: User=Depends(get_current_user),
-                   db: Session = Depends(get_db)):
-    role = db.query(User).filter(User.role==current_user.role)
+# Allow an administrator to view and manage all registered users
+@router.get("/admin/users", response_model=list[UserResponse])
+def get_all_users( 
+    admin_users: User=Depends(get_admin_user),
+    db: Session=Depends(get_db)
+    ):
+    
+    users=db.query(User).all()
+    return users
     
